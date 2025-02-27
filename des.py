@@ -43,6 +43,26 @@ def left_shift(value: int, amount: int, size: int):
     return value & ((1 << size) - 1)
 
 
+def print_bin(value: int, size: int, group: int):
+    '''
+    Helper function which prints an integer's binary representation.
+    Separates the bits into groups to make it nicer to look at.
+
+    value : int
+        The integer whose binary representation should be printed
+    size : int
+        The number of bits in the integer to print
+    group : int
+        How to group the bits in the printed output.
+        Should be a factor of `size`
+    '''
+    s: str = bin(value)[2:].rjust(size, '0')
+    num_groups: int = int(size / group)
+    for i in range(num_groups):
+        print(s[i * group:(i + 1) * group], end=' ')
+    print()
+
+
 class DES:
     '''
     Class which implements the DES algorithm for encryption and decryption.
@@ -146,9 +166,19 @@ class DES:
         22, 11,  4, 25
     ]
     round_keys: list[int] = None
+    silent: bool
 
-    def __init__(self, _key: int):
+    def __init__(self, _key: int, _silent=True):
+        '''
+        Constructor
+
+        _key : int
+            The key used for encryption and decryption
+        _silent : bool
+            Whether or not to print information about encryption / decryption.
+        '''
         self.key = _key
+        self.silent = _silent
 
     def generate_round_keys(self):
         '''
@@ -163,6 +193,9 @@ class DES:
             D = left_shift(D, self.iteration_table[i], 28)
             temp = (C << 28) | D
             temp = permute(self.PC2, temp, 56)
+            if not self.silent:
+                print(f"Round key {i+1}: ", end='')
+                print_bin(temp, 48, 6)
             self.round_keys.append(temp)
 
     def get_s_box(self, i: int, row: int, col: int) -> int:
@@ -196,7 +229,11 @@ class DES:
             col = (group & 0b011110) >> 1
             out |= (self.get_s_box(7 - i, row, col) << shift)
             shift += 4
-        return permute(self.P, out, 32)
+        out = permute(self.P, out, 32)
+        if not self.silent:
+            print("f(R): ", end='')
+            print_bin(out, 32, 4)
+        return out
 
     def encrypt_block(self, block: int) -> int:
         '''
@@ -204,14 +241,31 @@ class DES:
         '''
         if not self.round_keys:
             self.generate_round_keys()
+            if not self.silent:
+                print()
         block = permute(self.IP, block, 64)
         L = (block & 0xFFFFFFFF00000000) >> 32
         R = block & 0xFFFFFFFF
+        if not self.silent:
+            print("L_0: ", end='')
+            print_bin(L, 32, 4)
+            print("R_0: ", end='')
+            print_bin(R, 32, 4)
+            print()
         for i in range(16):
             temp = R
             R = L ^ self.f(R, self.round_keys[i])
             L = temp
+            if not self.silent:
+                print(f"L_{i+1}: ", end='')
+                print_bin(L, 32, 4)
+                print(f"R_{i+1}: ", end='')
+                print_bin(R, 32, 4)
+                print()
         out = (R << 32) | L
+        if not self.silent:
+            print("RL: ", end='')
+            print_bin(out, 64, 4)
         return permute(self.IP_inv, out, 64)
 
     def decrypt_block(self, block: int) -> int:
@@ -223,9 +277,24 @@ class DES:
         block = permute(self.IP, block, 64)
         L = (block & 0xFFFFFFFF00000000) >> 32
         R = block & 0xFFFFFFFF
+        if not self.silent:
+            print("L_0: ", end='')
+            print_bin(L, 32, 4)
+            print("R_0: ", end='')
+            print_bin(R, 32, 4)
+            print()
         for i in range(16):
             temp = R
             R = L ^ self.f(R, self.round_keys[15 - i])
             L = temp
+            if not self.silent:
+                print(f"L_{i+1}: ", end='')
+                print_bin(L, 32, 4)
+                print(f"R_{i+1}: ", end='')
+                print_bin(R, 32, 4)
+                print()
         out = (R << 32) | L
+        if not self.silent:
+            print("RL: ", end='')
+            print_bin(out, 64, 4)
         return permute(self.IP_inv, out, 64)
