@@ -188,13 +188,14 @@ class DES:
         R = R ^ key
         out = 0
         # Splits R into groups of 6 bits
+        shift = 0
         for i in range(8):
             group = R & 0b111111
             R >>= 6
             row = ((group >> 4) & 2) | (group & 1)
             col = (group & 0b011110) >> 1
-            out |= self.get_s_box(7 - i, row, col)
-            out <<= 4
+            out |= (self.get_s_box(7 - i, row, col) << shift)
+            shift += 4
         return permute(self.P, out, 32)
 
     def encrypt_block(self, block: int) -> int:
@@ -210,3 +211,21 @@ class DES:
             temp = R
             R = L ^ self.f(R, self.round_keys[i])
             L = temp
+        out = (R << 32) | L
+        return permute(self.IP_inv, out, 64)
+
+    def decrypt_block(self, block: int) -> int:
+        '''
+        Decrypts a 64-bit block of data using the DES algorithm
+        '''
+        if not self.round_keys:
+            self.generate_round_keys()
+        block = permute(self.IP, block, 64)
+        L = (block & 0xFFFFFFFF00000000) >> 32
+        R = block & 0xFFFFFFFF
+        for i in range(16):
+            temp = R
+            R = L ^ self.f(R, self.round_keys[15 - i])
+            L = temp
+        out = (R << 32) | L
+        return permute(self.IP_inv, out, 64)
