@@ -15,11 +15,32 @@ def permute(permutation: list[int], value: int, size: int) -> int:
     i: int = len(permutation) - 1
     for index in permutation:
         temp: int = value & (1 << size - index)
-    temp >>= (size - index)
-    temp <<= i
-    i -= 1
-    result |= temp
+        temp >>= (size - index)
+        temp <<= i
+        i -= 1
+        result |= temp
     return result
+
+
+def left_shift(value: int, amount: int, size: int):
+    '''
+    Applies a **round** left-shift on value.
+    Similar to `value << amount`, but bits at the left end of
+    `value` are moved to the right end instead of overflowing.
+
+    value : int
+        The value to left shift
+    amount : int
+        The amount to shift by
+    size : int
+        The number of bits in `value`
+    '''
+    value <<= amount
+    for i in range(amount):
+        temp: int = value & (1 << (size + i))
+        temp >>= (size)
+        value |= temp
+    return value & ((1 << size) - 1)
 
 
 class DES:
@@ -50,15 +71,25 @@ class DES:
     iteration_table: list[int] = [
         1, 1, 2, 2, 2, 2, 2, 2, 1, 2, 2, 2, 2, 2, 2, 1
     ]
-    round_keys: list[int] = []
+    round_keys: list[int]
 
     def __init__(self, _key: int):
         self.key = _key
 
-    def generate_round_keys():
+    def generate_round_keys(self):
         '''
         Uses the master key to generate the 16 round keys
         '''
+        self.round_keys = []
+        key_prime = permute(self.PC1, self.key, 64)
+        C = (key_prime & 0xFFFFFFF0000000) >> 28
+        D = key_prime & 0xFFFFFFF
+        for i in range(16):
+            C = left_shift(C, self.iteration_table[i], 28)
+            D = left_shift(D, self.iteration_table[i], 28)
+            temp = (C << 28) | D
+            temp = permute(self.PC2, temp, 56)
+            self.round_keys.append(temp)
 
     def encrypt(self):
         pass
