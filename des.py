@@ -14,7 +14,7 @@ def permute(permutation: list[int], value: int, size: int) -> int:
     result: int = 0
     i: int = len(permutation) - 1
     for index in permutation:
-        temp: int = value & (1 << size - index)
+        temp: int = value & (1 << (size - index))
         temp >>= (size - index)
         temp <<= i
         i -= 1
@@ -91,7 +91,17 @@ class DES:
         34, 2, 42, 10, 50, 18, 58, 26,
         33, 1, 41,  9, 49, 17, 57, 25,
     ]
-    round_keys: list[int]
+    E_bit: list[int] = [
+        32,  1,  2,  3,  4,  5,
+        4,   5,  6,  7,  8,  9,
+        8,   9, 10, 11, 12, 13,
+        12, 13, 14, 15, 16, 17,
+        16, 17, 18, 19, 20, 21,
+        20, 21, 22, 23, 24, 25,
+        24, 25, 26, 27, 28, 29,
+        28, 29, 30, 31, 32, 1
+    ]
+    round_keys: list[int] = None
 
     def __init__(self, _key: int):
         self.key = _key
@@ -111,7 +121,30 @@ class DES:
             temp = permute(self.PC2, temp, 56)
             self.round_keys.append(temp)
 
+    def f(self, R: int, key: int) -> int:
+        '''
+        Used in the DES encryption algorithm
+
+        R : int
+            A 32-bit intermediate value in the encryption
+        key : int
+            A 48-bit round key.
+
+        returns : int
+            A 32-bit value.
+        '''
+        R = permute(self.E_bit, R, 32)
+
     def encrypt_block(self, block: int) -> int:
         '''
         Encrypts a 64-bit block of data using the DES algorithm
         '''
+        if not self.round_keys:
+            self.generate_round_keys()
+        block = permute(self.IP, block, 64)
+        L = (block & 0xFFFFFFFF00000000) >> 32
+        R = block & 0xFFFFFFFF
+        for i in range(16):
+            temp = R
+            R = L ^ self.f(R, self.round_keys[i])
+            L = temp
