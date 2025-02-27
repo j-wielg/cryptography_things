@@ -231,7 +231,7 @@ class DES:
             shift += 4
         out = permute(self.P, out, 32)
         if not self.silent:
-            print("f(R): ", end='')
+            print("f  : ", end='')
             print_bin(out, 32, 4)
         return out
 
